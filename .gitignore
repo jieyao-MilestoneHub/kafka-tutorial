@@ -1,0 +1,6 @@
+# temp files
+data/
+
+# support files
+show_-content.py
+result.json

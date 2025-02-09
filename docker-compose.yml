@@ -22,12 +22,32 @@ services:
       KAFKA_NUM_PARTITIONS: 3
     volumes:
       - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 5s
+
+  # Kafdrop UI 服務，用以監控 Kafka 叢集
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    restart: "no"
+    ports:
+      - "9000:9000"
+    environment:
+      # 使用 Kafka 內部網路連線，對應你 Kafka 的 advertised listener
+      KAFKA_BROKERCONNECT: "kafka:9092"
+    depends_on:
+      - kafka
 
   kafka-init:
     image: apache/kafka:latest
     container_name: kafka-init
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     volumes:
       - ./init-topics.sh:/init-topics.sh
     entrypoint: ["/bin/bash", "/init-topics.sh"]
@@ -37,21 +57,24 @@ services:
     build: ./producer
     container_name: etl-producer
     depends_on:
-      - kafka-init  # 確保 Kafka 與 Topic 初始化完成後再啟動
+      kafka:
+        condition: service_healthy
     restart: always
 
   etl-consumer:
     build: ./consumer
     container_name: etl-consumer
     depends_on:
-      - kafka-init
+      kafka:
+        condition: service_healthy
     restart: always
 
   etl-stream-process:
     build: ./stream_process
     container_name: etl-stream-process
     depends_on:
-      - kafka-init
+      kafka:
+        condition: service_healthy
     restart: always
 
 volumes:

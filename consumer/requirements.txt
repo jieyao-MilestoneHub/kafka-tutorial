@@ -1,2 +1,2 @@
 kafka-python
-sentence_transformers
+scikit-learn
